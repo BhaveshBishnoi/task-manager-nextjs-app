@@ -10,27 +10,31 @@ export async function POST(request: Request) {
     // Initialize the model
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // Generate content with a strict prompt
-    const prompt = `Write a brief, professional task description for: "${title}". 
-    Important: Provide ONLY the description text - no labels, titles, or prefixes. 
-    Keep it under 50 words and focus on actionable details only.`;
+    // Generate content with direct JSON output prompt
+    const prompt = `Generate a JSON output for task: "${title}"
+    {
+      "description": "brief task description under 50 words",
+      "priority": "LOW|MEDIUM|HIGH",
+      "estimatedDays": number,
+      "dueDate": "YYYY-MM-DD"
+    }`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    const jsonOutput = response.text().trim();
 
-    // Clean up the response text
-    let description = response
-      .text()
-      .replace(/^(Task Description:|Description:|Task:)/i, "")
-      .replace(/^\s*[-•:]\s*/, "")
-      .trim();
-
-    return NextResponse.json({ description });
+    return new NextResponse(jsonOutput, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     console.error("Gemini API error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate description" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      description: "",
+      priority: "MEDIUM",
+      estimatedDays: 1,
+      dueDate: new Date().toISOString().split("T")[0],
+    });
   }
 }
