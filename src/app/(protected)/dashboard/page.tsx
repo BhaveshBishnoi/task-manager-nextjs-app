@@ -58,6 +58,22 @@ interface Task extends TaskFormValues {
   userId: string;
 }
 
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,6 +82,7 @@ export default function DashboardPage() {
   const { userId } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -77,6 +94,9 @@ export default function DashboardPage() {
       dueDate: null,
     },
   });
+
+  const titleValue = form.watch("title");
+  const debouncedTitle = useDebounce(titleValue, 1000); // 1 second delay
 
   useEffect(() => {
     if (editingTask) {
@@ -95,6 +115,38 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    const generateDescription = async () => {
+      if (debouncedTitle.length > 3 && !editingTask) {
+        setIsGeneratingDescription(true);
+        try {
+          const response = await fetch("/api/gemini", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title: debouncedTitle }),
+          });
+
+          if (!response.ok) throw new Error("Failed to generate description");
+
+          const data = await response.json();
+          form.setValue("description", data.description);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to generate description",
+            variant: "destructive",
+          });
+        } finally {
+          setIsGeneratingDescription(false);
+        }
+      }
+    };
+
+    generateDescription();
+  }, [debouncedTitle]);
 
   const fetchTasks = async () => {
     try {
@@ -225,10 +277,18 @@ export default function DashboardPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Enter task description"
-                          {...field}
-                        />
+                        <div className="relative">
+                          <Textarea
+                            placeholder="Enter task description"
+                            {...field}
+                            disabled={isGeneratingDescription}
+                          />
+                          {isGeneratingDescription && (
+                            <div className="absolute right-2 top-2 text-sm text-muted-foreground">
+                              Generating...
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
