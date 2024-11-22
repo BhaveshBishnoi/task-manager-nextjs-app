@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     // Generate content with a strict prompt
     const prompt = `Write a brief, professional task description for: "${title}". 
     Important: Provide ONLY the description text - no labels, titles, or prefixes. 
-    Keep it under 50 words and focus on actionable details.`;
+    Keep it under 50 words and focus on actionable details only.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

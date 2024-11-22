@@ -285,7 +285,7 @@ export default function DashboardPage() {
                           />
                           {isGeneratingDescription && (
                             <div className="absolute right-2 top-2 text-sm text-muted-foreground">
-                              Generating...
+                              Generating Description...
                             </div>
                           )}
                         </div>
