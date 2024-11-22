@@ -9,4 +9,3 @@
 .env.test
 .env.production
 .env.example
-/src
